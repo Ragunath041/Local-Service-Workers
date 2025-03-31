@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -34,9 +33,12 @@ const Index = () => {
             <CardContent className="text-center">
               <p className="text-gray-600">Browse listings and connect with service providers for your needs</p>
             </CardContent>
-            <CardFooter className="flex justify-center">
-              <Link to="/user/login">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">Continue as User</Button>
+            <CardFooter className="flex justify-center gap-2">
+              <Link to="/login" className="w-full">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700">Login as User</Button>
+              </Link>
+              <Link to="/register" className="w-full">
+                <Button variant="outline" className="w-full">Register</Button>
               </Link>
             </CardFooter>
           </Card>
@@ -53,9 +55,12 @@ const Index = () => {
             <CardContent className="text-center">
               <p className="text-gray-600">Create listings for your services and connect with potential clients</p>
             </CardContent>
-            <CardFooter className="flex justify-center">
-              <Link to="/worker/login">
-                <Button className="w-full bg-orange-600 hover:bg-orange-700">Continue as Worker</Button>
+            <CardFooter className="flex justify-center gap-2">
+              <Link to="/login" className="w-full">
+                <Button className="w-full bg-orange-600 hover:bg-orange-700">Login as Worker</Button>
+              </Link>
+              <Link to="/register" className="w-full">
+                <Button variant="outline" className="w-full">Register</Button>
               </Link>
             </CardFooter>
           </Card>
@@ -73,8 +78,8 @@ const Index = () => {
               <p className="text-gray-600">Review and approve service listings to maintain quality standards</p>
             </CardContent>
             <CardFooter className="flex justify-center">
-              <Link to="/admin/login">
-                <Button className="w-full bg-green-600 hover:bg-green-700">Continue as Admin</Button>
+              <Link to="/login" className="w-full">
+                <Button className="w-full bg-green-600 hover:bg-green-700">Login as Admin</Button>
               </Link>
             </CardFooter>
           </Card>

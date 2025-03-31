@@ -4,12 +4,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Navigation } from "@/components/Navigation";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { servicesApi } from "@/lib/services";
 import { useAuth } from "@/lib/auth-context";
+import { Spinner } from "@/components/ui/spinner";
 
 const categories = [
   "Home Repair",
@@ -23,44 +24,100 @@ const categories = [
   "Other"
 ];
 
-const CreateService = () => {
+const EditService = () => {
+  const { serviceId } = useParams<{ serviceId: string }>();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [price, setPrice] = useState("");
   const [location, setLocation] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   
   const navigate = useNavigate();
   const { user } = useAuth();
   
+  useEffect(() => {
+    const fetchService = async () => {
+      if (!serviceId) {
+        toast.error("Service ID not found");
+        navigate("/worker/dashboard");
+        return;
+      }
+      
+      try {
+        console.log("Fetching service with ID:", serviceId);
+        const service = await servicesApi.getService(serviceId);
+        console.log("Fetched service:", service);
+        
+        if (!service) {
+          toast.error("Service not found");
+          navigate("/worker/dashboard");
+          return;
+        }
+
+        // Verify the service belongs to the current worker
+        if (service.workerId !== user?._id) {
+          toast.error("You don't have permission to edit this service");
+          navigate("/worker/dashboard");
+          return;
+        }
+
+        setTitle(service.title);
+        setDescription(service.description);
+        setCategory(service.category);
+        setPrice(service.price);
+        setLocation(service.location);
+      } catch (error: any) {
+        console.error("Error fetching service:", error);
+        toast.error(error.response?.data?.error || "Failed to fetch service");
+        navigate("/worker/dashboard");
+      } finally {
+        setIsFetching(false);
+      }
+    };
+
+    fetchService();
+  }, [serviceId, navigate, user?._id]);
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?._id) {
-      toast.error("User ID not found. Please try logging in again.");
+    if (!serviceId) {
+      toast.error("Service ID not found");
       return;
     }
     
     setIsLoading(true);
     
     try {
-      await servicesApi.createService({
+      await servicesApi.updateService(serviceId, {
         title,
         description,
         price,
         category,
-        location,
-        workerId: user._id
+        location
       });
       
-      toast.success("Service created successfully! It will be reviewed by an admin.");
+      toast.success("Service updated successfully!");
       navigate("/worker/dashboard");
     } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to create service. Please try again.");
+      console.error("Error updating service:", error);
+      toast.error(error.response?.data?.error || "Failed to update service. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isFetching) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="flex justify-center items-center h-[calc(100vh-4rem)]">
+          <Spinner className="h-8 w-8" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -68,15 +125,15 @@ const CreateService = () => {
       
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Create New Service</h1>
-          <p className="text-gray-600 mt-2">Add a new service listing to offer to potential clients</p>
+          <h1 className="text-3xl font-bold text-gray-900">Edit Service</h1>
+          <p className="text-gray-600 mt-2">Update your service listing details</p>
         </div>
         
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>Service Details</CardTitle>
             <CardDescription>
-              Fill out the form below to create your service listing. It will be reviewed by an admin before being published.
+              Update the form below to modify your service listing.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -153,7 +210,7 @@ const CreateService = () => {
                   className="bg-orange-600 hover:bg-orange-700"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Creating..." : "Create Service"}
+                  {isLoading ? "Updating..." : "Update Service"}
                 </Button>
               </div>
             </form>
@@ -164,4 +221,4 @@ const CreateService = () => {
   );
 };
 
-export default CreateService;
+export default EditService; 

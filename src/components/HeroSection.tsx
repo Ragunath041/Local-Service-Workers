@@ -1,8 +1,10 @@
-
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/lib/auth-context";
 
 const HeroSection = () => {
+  const { isAuthenticated, user, logout } = useAuth();
+
   return (
     <div className="bg-blue-600 text-white">
       <div className="container mx-auto px-4 py-16 md:py-24">
@@ -15,16 +17,35 @@ const HeroSection = () => {
               Connect with skilled professionals for all your service needs
             </p>
             <div className="flex flex-wrap gap-4">
-              <Link to="/user/login">
-                <Button className="bg-white text-blue-600 hover:bg-blue-50">
-                  Find Services
-                </Button>
-              </Link>
-              <Link to="/worker/login">
-                <Button variant="outline" className="bg-transparent border-white text-white hover:bg-blue-700">
-                  Offer Services
-                </Button>
-              </Link>
+              {!isAuthenticated ? (
+                <>
+                  <Link to="/login">
+                    <Button className="bg-white text-blue-600 hover:bg-blue-50">
+                      Find Services
+                    </Button>
+                  </Link>
+                  <Link to="/register">
+                    <Button variant="outline" className="bg-transparent border-white text-white hover:bg-blue-700">
+                      Offer Services
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link to={`/${user?.role}/dashboard`}>
+                    <Button className="bg-white text-blue-600 hover:bg-blue-50">
+                      Go to Dashboard
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="outline" 
+                    className="bg-transparent border-white text-white hover:bg-blue-700"
+                    onClick={logout}
+                  >
+                    Logout
+                  </Button>
+                </>
+              )}
             </div>
           </div>
           <div className="md:w-1/2 md:pl-12">

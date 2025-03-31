@@ -1,79 +1,81 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import Navigation from "@/components/Navigation";
-import { useState } from "react";
-import { SearchIcon, MapPinIcon, StarIcon } from "lucide-react";
+import { Navigation } from "@/components/Navigation";
+import { useEffect, useState } from "react";
+import { SearchIcon, MapPinIcon, MessageSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-
-// Mock data for services
-const services = [
-  {
-    id: 1,
-    title: "Professional Plumbing Services",
-    category: "Home Repair",
-    rating: 4.8,
-    reviews: 124,
-    location: "New York, NY",
-    description: "Expert plumbing services for residential and commercial properties. Available 24/7 for emergencies.",
-    price: "$50/hr",
-    status: "Approved"
-  },
-  {
-    id: 2,
-    title: "Interior House Painting",
-    category: "Home Improvement",
-    rating: 4.6,
-    reviews: 89,
-    location: "Brooklyn, NY",
-    description: "Quality interior painting services with attention to detail. Free color consultation included.",
-    price: "$35/hr",
-    status: "Approved"
-  },
-  {
-    id: 3,
-    title: "Lawn Mowing & Garden Maintenance",
-    category: "Landscaping",
-    rating: 4.7,
-    reviews: 56,
-    location: "Queens, NY",
-    description: "Regular lawn mowing, garden maintenance, and seasonal clean-ups for residential properties.",
-    price: "$40/hr",
-    status: "Approved"
-  },
-  {
-    id: 4,
-    title: "Professional Carpet Cleaning",
-    category: "Cleaning",
-    rating: 4.5,
-    reviews: 72,
-    location: "Bronx, NY",
-    description: "Deep carpet cleaning using eco-friendly products. Removes stains, odors, and allergens.",
-    price: "$0.30/sq ft",
-    status: "Approved"
-  }
-];
+import { servicesApi, Service } from "@/lib/services";
+import { toast } from "sonner";
+import { Spinner } from "@/components/ui/spinner";
+import { SendMessageDialog } from "@/components/SendMessageDialog";
+import { useAuth } from "@/lib/auth-context";
 
 const UserDashboard = () => {
+  const [services, setServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  
-  const categories = [...new Set(services.map(service => service.category))];
-  
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const { user } = useAuth();
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await servicesApi.getServiceCategories();
+        setCategories(data);
+      } catch (error) {
+        toast.error(
+          error instanceof Error 
+            ? error.message 
+            : "Failed to fetch categories"
+        );
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Fetch services based on selected category
+  useEffect(() => {
+    const fetchServices = async () => {
+      setIsLoading(true);
+      try {
+        let data: Service[];
+        if (selectedCategory) {
+          data = await servicesApi.getServicesByCategory(selectedCategory);
+        } else {
+          data = await servicesApi.getApprovedServices();
+        }
+        setServices(data);
+      } catch (error) {
+        toast.error(
+          error instanceof Error 
+            ? error.message 
+            : "Failed to fetch services"
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, [selectedCategory]);
+
   const filteredServices = services.filter(service => {
     return (
-      (searchTerm === "" || 
-        service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchTerm.toLowerCase())
-      ) &&
-      (selectedCategory === null || service.category === selectedCategory)
+      searchTerm === "" || 
+      service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      service.description.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation userType="user" />
+      <Navigation />
       
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
@@ -132,10 +134,14 @@ const UserDashboard = () => {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 gap-6">
-              {filteredServices.length > 0 ? (
-                filteredServices.map(service => (
-                  <Card key={service.id} className="overflow-hidden hover:shadow-md transition-shadow">
+            {isLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <Spinner className="h-8 w-8" />
+              </div>
+            ) : filteredServices.length > 0 ? (
+              <div className="grid grid-cols-1 gap-6">
+                {filteredServices.map(service => (
+                  <Card key={service._id} className="overflow-hidden hover:shadow-md transition-shadow">
                     <CardContent className="p-0">
                       <div className="p-6">
                         <div className="flex justify-between items-start">
@@ -152,30 +158,55 @@ const UserDashboard = () => {
                         <p className="mt-4 text-gray-600">{service.description}</p>
                         
                         <div className="mt-4 flex items-center justify-between">
-                          <div className="flex items-center">
-                            <StarIcon className="h-5 w-5 text-yellow-500 mr-1" />
-                            <span className="font-medium">{service.rating}</span>
-                            <span className="text-gray-500 ml-1">({service.reviews} reviews)</span>
+                          <div className="flex items-center text-gray-600">
+                            <span className="font-medium">Provider:</span>
+                            <span className="ml-2">{service.workerName}</span>
                           </div>
                           <div className="font-semibold">{service.price}</div>
                         </div>
                         
                         <div className="mt-6">
-                          <Button className="w-full">Contact Provider</Button>
+                          <Button 
+                            className="w-full flex items-center justify-center"
+                            onClick={() => {
+                              if (!user) {
+                                toast.error("Please log in to contact providers");
+                                return;
+                              }
+                              setSelectedService(service);
+                              setMessageDialogOpen(true);
+                            }}
+                          >
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Contact Provider
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                ))
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-gray-500">No services found matching your criteria</p>
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-500">No services found matching your criteria</p>
+              </div>
+            )}
           </div>
         </div>
       </main>
+
+      {selectedService && (
+        <SendMessageDialog
+          open={messageDialogOpen}
+          onOpenChange={setMessageDialogOpen}
+          receiverId={selectedService.workerId}
+          receiverName={selectedService.providerName || "Provider"}
+          serviceId={selectedService._id}
+          serviceTitle={selectedService.title}
+          providerPhone={selectedService.providerPhone}
+          providerEmail={selectedService.providerEmail}
+        />
+      )}
     </div>
   );
 };

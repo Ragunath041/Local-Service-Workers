@@ -1,7 +1,6 @@
-
 import { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import Navigation from "./Navigation";
+import { Navigation } from "./Navigation";
 
 type AuthLayoutProps = {
   children: ReactNode;
